@@ -39,9 +39,9 @@ module.exports = function(grunt) {
 	// Generates function to find end marker, e.g. <!-- /include -->
 	var findEndMarker = function(name, pattern){
 		/*
-			source: Code between the current include and the next one. (Or the end of the file)
-			offset: Stat position of the source fragement inside the file.
-		*/
+		 source: Code between the current include and the next one. (Or the end of the file)
+		 offset: Stat position of the source fragement inside the file.
+		 */
 		return function(source, offset){
 			var endMarker = pattern.exec(source);
 			if (endMarker === null){
@@ -116,7 +116,7 @@ module.exports = function(grunt) {
 
 		basePath = grunt.config.process(basePath);
 
-		var files, sourcePath = '';
+		var files, sourcePath = '', dynamicFiles = null;
 		if (includeOptions.bower) {
 			grunt.log.debug('Resolving files from Bower component "' + includeOptions.bower + '"...');
 
@@ -132,11 +132,18 @@ module.exports = function(grunt) {
 			// Retrieve files property. If it's a string, process it as a template.
 			files = includeOptions.files;
 			files = grunt.config.process(files);
+			if (includeOptions.useDynamicDependencies && options.dynamicDependencies[includeOptions.type] instanceof Array) {
+				dynamicFiles = options.dynamicDependencies[includeOptions.type];
+			}
+		}
+
+		if (!files && dynamicFiles === null) {
+			grunt.log.debug('No files found.');
+			return [];
 		}
 
 		if (!files) {
-			grunt.log.debug('No files found.');
-			return [];
+			files = [];
 		}
 
 		grunt.log.debug('Expanding files: ' + util.inspect(files));
@@ -146,6 +153,10 @@ module.exports = function(grunt) {
 		// Split here manually so the exclusion patterns work.
 		if (typeof files === 'string') {
 			files = files.split(',');
+		}
+
+		if (dynamicFiles !== null) {
+			files = files.concat(dynamicFiles);
 		}
 
 		// Expand patterns.
@@ -230,18 +241,18 @@ module.exports = function(grunt) {
 			// Concatenate the source files.
 			var contents = '';
 			var contentSources = file.src.filter(function(filePath) {
-					grunt.log.debug('Using input file "' + filePath + '".');
-					// Remove nonexistent files.
-					if (!grunt.file.exists(filePath)) {
-						grunt.log.warn('Source file "' + filePath + '" not found.');
-						return false;
-					} else {
-						return true;
-					}
-				}).map(	function(filePath) {
-					// Read and return the file's source.
-					return grunt.file.read(filePath);
-				});
+				grunt.log.debug('Using input file "' + filePath + '".');
+				// Remove nonexistent files.
+				if (!grunt.file.exists(filePath)) {
+					grunt.log.warn('Source file "' + filePath + '" not found.');
+					return false;
+				} else {
+					return true;
+				}
+			}).map(	function(filePath) {
+				// Read and return the file's source.
+				return grunt.file.read(filePath);
+			});
 
 			// Don't bother detecting newline if we have no more than 1 file.
 			if (contentSources.length > 1) {
